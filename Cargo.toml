@@ -2,6 +2,13 @@
 name = "chain-life"
 version = "0.1.0"
 edition = "2021"
+description = "A CLI tool to authenticate with Strava using OAuth and fetch your total kilometers since a given date"
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/your-username/chain-life"
+repository = "https://github.com/your-username/chain-life"
+keywords = ["strava", "cli", "cycling", "fitness", "oauth"]
+categories = ["command-line-utilities", "api-bindings"]
 
 [dependencies]
 clap = { version = "4.0", features = ["derive"] }
