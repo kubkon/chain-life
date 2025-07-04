@@ -8,6 +8,7 @@ A command-line tool to authenticate with Strava using OAuth and fetch your total
 - 📅 Parse human-readable dates in YYYY-MM-DD format
 - 🚴 Smart activity filtering (cycling by default, with options for running, all, or custom types)
 - 🏃 Fetch total kilometers from filtered activities since a specified date
+- 🎨 Beautiful colored terminal output with emojis for better readability
 - 🔍 Verbose output option for debugging with activity-by-activity breakdown
 - 🛡️ Secure token handling with state validation
 - 📊 Real-time activity data from Strava API
@@ -53,8 +54,9 @@ This will:
 4. Ask you to paste the redirect URL back
 5. Exchange the authorization code for access and refresh tokens
 
-Example output:
+Example output (with colors and emojis):
 ```
+🔐 Starting Strava OAuth authentication...
 🔗 Please open this URL in your browser to authorize the application:
 https://www.strava.com/oauth/authorize?client_id=12345&response_type=code&redirect_uri=http://localhost/exchange_token&approval_prompt=force&scope=read,activity:read_all&state=...
 
@@ -72,6 +74,8 @@ Enter the redirect URL: http://localhost/exchange_token?state=...&code=abc123&sc
    chain-life fetch --date 2024-01-01 --token your_access_token_here
 ```
 
+The output uses vibrant colors to make the authentication flow clear and visually appealing.
+
 ### 2. Fetch Data
 
 After authentication, use the access token to fetch your kilometers:
@@ -86,7 +90,7 @@ After authentication, use the access token to fetch your kilometers:
 # Fetch specific activity types
 ./target/release/chain-life fetch --date 2024-01-01 --token YOUR_ACCESS_TOKEN --activity-types "Ride,VirtualRide,Run"
 
-# With verbose output
+# With beautiful verbose output (includes colors and activity breakdown)
 ./target/release/chain-life fetch --date 2024-01-01 --token YOUR_ACCESS_TOKEN --verbose
 ```
 
@@ -95,22 +99,32 @@ Example output:
 🚴 Total kilometers since 2024-01-01: 342.50 km
 ```
 
-With verbose output:
+With verbose output (with beautiful colors and emojis):
 ```
-Starting Strava data fetch...
-Parsed start date: 2024-01-01
-Filtering for activity types: ["Ride", "VirtualRide", "EBikeRide", "MountainBikeRide", "GravelRide", "Handcycle"]
-Fetching activities since timestamp: 1704067200
-Fetched 25 activities from page 1
+🚀 Starting Strava data fetch...
+📅 Parsed start date: 2024-01-01
+🔍 Filtering for activity types: ["Ride", "VirtualRide", "EBikeRide", "MountainBikeRide", "GravelRide", "Handcycle"]
+📡 Fetching activities since timestamp: 1704067200
+📄 Fetched 25 activities from page 1
   ✓ Morning Bike Ride: 15.30 km (Ride)
   ✓ Evening Zwift Session: 25.40 km (VirtualRide)
   ✗ Weekend Long Run: 21.10 km (Run) - filtered out
   ✓ Gravel Adventure: 35.20 km (GravelRide)
   ...
-Total activities included: 18
-Total activities filtered out: 7
+
+📊 Total activities included: 18
+🚫 Total activities filtered out: 7
+
 🚴 Total kilometers since 2024-01-01: 342.50 km
 ```
+
+**Color Scheme:**
+- 🟢 **Green**: Included activities, success messages, totals
+- 🔴 **Red**: Filtered out activities, errors
+- 🔵 **Blue**: URLs, activity types
+- 🟡 **Yellow**: Warnings, filter information
+- 🟣 **Cyan**: Section headers, processing steps
+- ⚪ **White/Bold**: Important values (dates, distances, tokens)
 
 ## Command Reference
 
@@ -186,6 +200,7 @@ cargo build --release
 1. **"This site can't be reached"** - This is expected! Just copy the URL from your browser.
 2. **Invalid token** - Access tokens expire every 6 hours. Re-authenticate to get a new one.
 3. **Rate limits** - Strava API has rate limits (200 requests per 15 minutes, 2000 per day).
+4. **Colors not showing** - If colors don't appear, your terminal may not support them. Try a modern terminal like iTerm2, Windows Terminal, or VS Code's integrated terminal.
 
 ### Getting Help
 

@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use chrono::NaiveDate;
 use clap::{Parser, Subcommand};
+use colored::*;
 use serde::{Deserialize, Serialize};
 use std::io::{self, Write};
 use url::Url;
@@ -153,7 +154,7 @@ async fn main() -> Result<()> {
 
 async fn handle_auth(client_id: String, client_secret: String, verbose: bool) -> Result<()> {
     if verbose {
-        println!("Starting Strava OAuth authentication...");
+        println!("{}", "🔐 Starting Strava OAuth authentication...".bright_cyan().bold());
     }
 
     // Generate a unique state parameter for security
@@ -162,13 +163,13 @@ async fn handle_auth(client_id: String, client_secret: String, verbose: bool) ->
     // Build the authorization URL
     let auth_url = build_auth_url(&client_id, &state)?;
 
-    println!("🔗 Please open this URL in your browser to authorize the application:");
-    println!("{auth_url}");
+    println!("{}", "🔗 Please open this URL in your browser to authorize the application:".bright_cyan().bold());
+    println!("{}", auth_url.blue().underline());
     println!();
-    println!("After authorizing, you'll be redirected to a page that can't be reached.");
-    println!("Copy the ENTIRE URL from your browser's address bar and paste it here:");
+    println!("{}", "After authorizing, you'll be redirected to a page that can't be reached.".yellow());
+    println!("{}", "Copy the ENTIRE URL from your browser's address bar and paste it here:".yellow());
 
-    print!("Enter the redirect URL: ");
+    print!("{}", "Enter the redirect URL: ".green().bold());
     io::stdout().flush()?;
 
     let mut input = String::new();
@@ -176,61 +177,68 @@ async fn handle_auth(client_id: String, client_secret: String, verbose: bool) ->
     let redirect_url = input.trim();
 
     if verbose {
-        println!("Processing redirect URL: {redirect_url}");
+        println!("{} {}", "Processing redirect URL:".dimmed(), redirect_url.dimmed());
     }
 
     // Extract the authorization code from the redirect URL
     let auth_code = extract_auth_code(redirect_url, &state)?;
 
     if verbose {
-        println!("Extracted authorization code: {auth_code}");
+        println!("{} {}", "Extracted authorization code:".dimmed(), auth_code.dimmed());
     }
 
     // Exchange the authorization code for tokens
     let token_response = exchange_code_for_token(&client_id, &client_secret, &auth_code).await?;
 
-    println!("✅ Authentication successful!");
+    println!("{}", "✅ Authentication successful!".bright_green().bold());
     println!(
-        "🏃 Athlete: {} {}",
-        token_response.athlete.firstname.unwrap_or_default(),
-        token_response.athlete.lastname.unwrap_or_default()
+        "{} {} {}",
+        "🏃 Athlete:".bright_cyan().bold(),
+        token_response.athlete.firstname.unwrap_or_default().bright_white().bold(),
+        token_response.athlete.lastname.unwrap_or_default().bright_white().bold()
     );
-    println!("🔑 Access Token: {}", token_response.access_token);
-    println!("🔄 Refresh Token: {}", token_response.refresh_token);
-    println!("⏰ Token expires at: {}", token_response.expires_at);
+    println!("{} {}", "🔑 Access Token:".bright_yellow().bold(), token_response.access_token.bright_white());
+    println!("{} {}", "🔄 Refresh Token:".bright_blue().bold(), token_response.refresh_token.bright_white());
+    println!("{} {}", "⏰ Token expires at:".bright_magenta().bold(), token_response.expires_at.to_string().bright_white());
     println!();
-    println!("💡 Save your access token to use with the 'fetch' command:");
+    println!("{}", "💡 Save your access token to use with the 'fetch' command:".bright_cyan().bold());
     println!(
-        "   strava-cli fetch --date 2024-01-01 --token {}",
-        token_response.access_token
+        "   {} {}",
+        "chain-life fetch --date 2024-01-01 --token".dimmed(),
+        token_response.access_token.bright_green()
     );
+    println!();
 
     Ok(())
 }
 
 async fn handle_fetch(date: String, token: String, activity_types: String, verbose: bool) -> Result<()> {
     if verbose {
-        println!("Starting Strava data fetch...");
+        println!("{}", "🚀 Starting Strava data fetch...".bright_cyan().bold());
     }
     
     // Parse the input date
     let start_date = parse_date(&date).context("Failed to parse the provided date")?;
     
     if verbose {
-        println!("Parsed start date: {}", start_date);
+        println!("{} {}", "📅 Parsed start date:".cyan(), start_date.to_string().bright_white().bold());
     }
     
     // Parse activity types
     let allowed_types = parse_activity_types(&activity_types)?;
     
     if verbose {
-        println!("Filtering for activity types: {:?}", allowed_types);
+        println!("{} {}", "🔍 Filtering for activity types:".cyan(), 
+                format!("{:?}", allowed_types).bright_yellow());
     }
     
     // Fetch activities from Strava
     let total_km = fetch_strava_data_since(start_date, token, allowed_types, verbose).await?;
     
-    println!("🚴 Total kilometers since {}: {:.2} km", date, total_km);
+    println!("{} {}: {} km", 
+             "🚴 Total kilometers since".bright_green().bold(),
+             date.bright_white().bold(),
+             format!("{:.2}", total_km).bright_green().bold());
     
     Ok(())
 }
@@ -327,7 +335,8 @@ async fn fetch_strava_data_since(
         .timestamp();
 
     if verbose {
-        println!("Fetching activities since timestamp: {start_timestamp}");
+        println!("{} {}", "📡 Fetching activities since timestamp:".cyan(), 
+                start_timestamp.to_string().bright_white());
     }
 
     let mut page = 1;
@@ -360,7 +369,10 @@ async fn fetch_strava_data_since(
         }
 
         if verbose {
-            println!("Fetched {} activities from page {}", activities.len(), page);
+            println!("{} {} activities from page {}", 
+                     "📄 Fetched".cyan(),
+                     activities.len().to_string().bright_white().bold(),
+                     page.to_string().bright_white().bold());
         }
 
         for activity in &activities {
@@ -370,20 +382,23 @@ async fn fetch_strava_data_since(
 
                 if verbose {
                     println!(
-                        "  ✓ {}: {:.2} km ({})",
-                        activity.name,
-                        activity.distance / 1000.0,
-                        activity.activity_type
+                        "  {} {}: {} km ({})",
+                        "✓".bright_green().bold(),
+                        activity.name.bright_white(),
+                        format!("{:.2}", activity.distance / 1000.0).bright_green().bold(),
+                        activity.activity_type.bright_blue()
                     );
                 }
             } else {
                 filtered_activities += 1;
                 if verbose {
                     println!(
-                        "  ✗ {}: {:.2} km ({}) - filtered out",
-                        activity.name,
-                        activity.distance / 1000.0,
-                        activity.activity_type
+                        "  {} {}: {} km ({}) - {}",
+                        "✗".bright_red().bold(),
+                        activity.name.dimmed(),
+                        format!("{:.2}", activity.distance / 1000.0).dimmed(),
+                        activity.activity_type.red(),
+                        "filtered out".red().italic()
                     );
                 }
             }
@@ -398,8 +413,12 @@ async fn fetch_strava_data_since(
     }
 
     if verbose {
-        println!("Total activities included: {}", total_activities);
-        println!("Total activities filtered out: {}", filtered_activities);
+        println!();
+        println!("{} {}", "📊 Total activities included:".bright_green().bold(), 
+                total_activities.to_string().bright_green().bold());
+        println!("{} {}", "🚫 Total activities filtered out:".bright_red().bold(), 
+                filtered_activities.to_string().bright_red().bold());
+        println!();
     }
 
     // Convert from meters to kilometers
