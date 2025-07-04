@@ -5,7 +5,7 @@
 
 set -e
 
-echo "🏃 Strava CLI Tool Demo"
+echo "🚴 Strava CLI Tool Demo"
 echo "======================"
 echo
 
@@ -44,12 +44,19 @@ echo "2. Authenticate with Strava:"
 echo "   ./target/release/chain-life auth --client-id YOUR_CLIENT_ID --client-secret YOUR_CLIENT_SECRET"
 echo
 
-echo "3. After authentication, use the access token to fetch data:"
+echo "3. After authentication, use the access token to fetch cycling data:"
 echo "   ./target/release/chain-life fetch --date 2024-01-01 --token YOUR_ACCESS_TOKEN"
 echo
+echo "   By default, it filters for cycling activities only (Ride, VirtualRide, EBikeRide, etc.)"
+echo
 
-echo "4. For verbose output, add --verbose flag:"
+echo "4. For verbose output with activity-by-activity breakdown:"
 echo "   ./target/release/chain-life fetch --date 2024-01-01 --token YOUR_ACCESS_TOKEN --verbose"
+echo
+echo "5. To include different activity types:"
+echo "   ./target/release/chain-life fetch --date 2024-01-01 --token YOUR_ACCESS_TOKEN --activity-types running"
+echo "   ./target/release/chain-life fetch --date 2024-01-01 --token YOUR_ACCESS_TOKEN --activity-types \"Ride,Run,Walk\""
+echo "   ./target/release/chain-life fetch --date 2024-01-01 --token YOUR_ACCESS_TOKEN --activity-types all"
 echo
 
 echo "🔧 Example with fake credentials (will show URL generation):"
@@ -61,3 +68,6 @@ echo
 
 echo "🚀 Ready to use! Run the commands above with your real Strava credentials."
 echo "📚 For more information, see the README.md file."
+echo
+echo "💡 Pro tip: The tool defaults to cycling activities, perfect for tracking your bike rides!"
+echo "   Use --activity-types to customize what activities to include in your distance calculations."

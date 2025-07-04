@@ -6,6 +6,54 @@ use std::io::{self, Write};
 use url::Url;
 use uuid::Uuid;
 
+// Common cycling activity types in Strava
+const CYCLING_TYPES: &[&str] = &[
+    "Ride",
+    "VirtualRide", 
+    "EBikeRide",
+    "MountainBikeRide",
+    "GravelRide",
+    "Handcycle",
+];
+
+// Common running activity types in Strava
+const RUNNING_TYPES: &[&str] = &[
+    "Run",
+    "TrailRun",
+    "Treadmill",
+    "VirtualRun",
+];
+
+// Other common activity types
+const OTHER_TYPES: &[&str] = &[
+    "Walk",
+    "Hike", 
+    "Swim",
+    "Rowing",
+    "Kayaking",
+    "Canoeing",
+    "StandUpPaddling",
+    "Surfing",
+    "Kitesurf",
+    "Windsurf",
+    "Sail",
+    "Snowboard",
+    "Ski",
+    "BackcountrySki",
+    "NordicSki",
+    "Snowshoe",
+    "RockClimbing",
+    "IceClimbing",
+    "AlpineSki",
+    "Elliptical",
+    "StairStepper",
+    "WeightTraining",
+    "Workout",
+    "Crossfit",
+    "Yoga",
+    "Golf",
+];
+
 #[derive(Parser)]
 #[command(name = "strava-cli")]
 #[command(about = "A CLI tool to fetch kilometers from Strava since a given date")]
@@ -35,11 +83,15 @@ enum Commands {
         /// Start date in YYYY-MM-DD format
         #[arg(short, long)]
         date: String,
-
+        
         /// Strava access token
         #[arg(short, long)]
         token: String,
-
+        
+        /// Activity types to include (comma-separated). Use 'cycling' for all cycling types, 'running' for all running types, or specify individual types
+        #[arg(short = 'a', long, default_value = "cycling")]
+        activity_types: String,
+        
         /// Verbose output
         #[arg(short, long)]
         verbose: bool,
@@ -93,8 +145,9 @@ async fn main() -> Result<()> {
         Commands::Fetch {
             date,
             token,
+            activity_types,
             verbose,
-        } => handle_fetch(date, token, verbose).await,
+        } => handle_fetch(date, token, activity_types, verbose).await,
     }
 }
 
@@ -155,23 +208,30 @@ async fn handle_auth(client_id: String, client_secret: String, verbose: bool) ->
     Ok(())
 }
 
-async fn handle_fetch(date: String, token: String, verbose: bool) -> Result<()> {
+async fn handle_fetch(date: String, token: String, activity_types: String, verbose: bool) -> Result<()> {
     if verbose {
         println!("Starting Strava data fetch...");
     }
-
+    
     // Parse the input date
     let start_date = parse_date(&date).context("Failed to parse the provided date")?;
-
+    
     if verbose {
-        println!("Parsed start date: {start_date}");
+        println!("Parsed start date: {}", start_date);
     }
-
+    
+    // Parse activity types
+    let allowed_types = parse_activity_types(&activity_types)?;
+    
+    if verbose {
+        println!("Filtering for activity types: {:?}", allowed_types);
+    }
+    
     // Fetch activities from Strava
-    let total_km = fetch_strava_data_since(start_date, token, verbose).await?;
-
-    println!("🏃 Total kilometers since {date}: {total_km:.2} km");
-
+    let total_km = fetch_strava_data_since(start_date, token, allowed_types, verbose).await?;
+    
+    println!("🚴 Total kilometers since {}: {:.2} km", date, total_km);
+    
     Ok(())
 }
 
@@ -254,6 +314,7 @@ fn parse_date(date_str: &str) -> Result<NaiveDate> {
 async fn fetch_strava_data_since(
     start_date: NaiveDate,
     token: String,
+    allowed_types: Vec<String>,
     verbose: bool,
 ) -> Result<f64> {
     let client = reqwest::Client::new();
@@ -273,7 +334,8 @@ async fn fetch_strava_data_since(
     let per_page = 200; // Max allowed by Strava
     let mut total_distance = 0.0;
     let mut total_activities = 0;
-
+    let mut filtered_activities = 0;
+    
     loop {
         let response = client
             .get("https://www.strava.com/api/v3/athlete/activities")
@@ -302,16 +364,28 @@ async fn fetch_strava_data_since(
         }
 
         for activity in &activities {
-            total_distance += activity.distance;
-            total_activities += 1;
+            if allowed_types.contains(&activity.activity_type) {
+                total_distance += activity.distance;
+                total_activities += 1;
 
-            if verbose {
-                println!(
-                    "  - {}: {:.2} km ({})",
-                    activity.name,
-                    activity.distance / 1000.0,
-                    activity.activity_type
-                );
+                if verbose {
+                    println!(
+                        "  ✓ {}: {:.2} km ({})",
+                        activity.name,
+                        activity.distance / 1000.0,
+                        activity.activity_type
+                    );
+                }
+            } else {
+                filtered_activities += 1;
+                if verbose {
+                    println!(
+                        "  ✗ {}: {:.2} km ({}) - filtered out",
+                        activity.name,
+                        activity.distance / 1000.0,
+                        activity.activity_type
+                    );
+                }
             }
         }
 
@@ -324,11 +398,46 @@ async fn fetch_strava_data_since(
     }
 
     if verbose {
-        println!("Total activities processed: {total_activities}");
+        println!("Total activities included: {}", total_activities);
+        println!("Total activities filtered out: {}", filtered_activities);
     }
 
     // Convert from meters to kilometers
     Ok(total_distance / 1000.0)
+}
+
+/// Parse activity types from user input, supporting shortcuts like 'cycling' and 'running'
+fn parse_activity_types(input: &str) -> Result<Vec<String>> {
+    let mut types = Vec::new();
+    
+    for part in input.split(',') {
+        let part = part.trim();
+        if part.is_empty() {
+            continue;
+        }
+        match part.to_lowercase().as_str() {
+            "cycling" => {
+                types.extend(CYCLING_TYPES.iter().map(|s| s.to_string()));
+            }
+            "running" => {
+                types.extend(RUNNING_TYPES.iter().map(|s| s.to_string()));
+            }
+            "all" => {
+                types.extend(CYCLING_TYPES.iter().map(|s| s.to_string()));
+                types.extend(RUNNING_TYPES.iter().map(|s| s.to_string()));
+                types.extend(OTHER_TYPES.iter().map(|s| s.to_string()));
+            }
+            _ => {
+                types.push(part.to_string());
+            }
+        }
+    }
+    
+    if types.is_empty() {
+        return Err(anyhow::anyhow!("No valid activity types specified"));
+    }
+    
+    Ok(types)
 }
 
 #[cfg(test)]
@@ -408,6 +517,41 @@ mod tests {
         let redirect_url = "http://localhost/exchange_token?error=access_denied&state=test-state";
         let state = "test-state";
         let result = extract_auth_code(redirect_url, state);
+        assert!(result.is_err());
+    }
+    
+    #[test]
+    fn test_parse_activity_types_cycling() {
+        let result = parse_activity_types("cycling");
+        assert!(result.is_ok());
+        let types = result.unwrap();
+        assert!(types.contains(&"Ride".to_string()));
+        assert!(types.contains(&"VirtualRide".to_string()));
+        assert!(types.contains(&"EBikeRide".to_string()));
+    }
+    
+    #[test]
+    fn test_parse_activity_types_running() {
+        let result = parse_activity_types("running");
+        assert!(result.is_ok());
+        let types = result.unwrap();
+        assert!(types.contains(&"Run".to_string()));
+        assert!(types.contains(&"TrailRun".to_string()));
+    }
+    
+    #[test]
+    fn test_parse_activity_types_mixed() {
+        let result = parse_activity_types("cycling,Run,Walk");
+        assert!(result.is_ok());
+        let types = result.unwrap();
+        assert!(types.contains(&"Ride".to_string()));
+        assert!(types.contains(&"Run".to_string()));
+        assert!(types.contains(&"Walk".to_string()));
+    }
+    
+    #[test]
+    fn test_parse_activity_types_empty() {
+        let result = parse_activity_types("");
         assert!(result.is_err());
     }
 }

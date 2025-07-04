@@ -6,8 +6,9 @@ A command-line tool to authenticate with Strava using OAuth and fetch your total
 
 - 🔐 OAuth 2.0 authentication with Strava
 - 📅 Parse human-readable dates in YYYY-MM-DD format
-- 🏃 Fetch total kilometers from all activities since a specified date
-- 🔍 Verbose output option for debugging
+- 🚴 Smart activity filtering (cycling by default, with options for running, all, or custom types)
+- 🏃 Fetch total kilometers from filtered activities since a specified date
+- 🔍 Verbose output option for debugging with activity-by-activity breakdown
 - 🛡️ Secure token handling with state validation
 - 📊 Real-time activity data from Strava API
 
@@ -76,8 +77,14 @@ Enter the redirect URL: http://localhost/exchange_token?state=...&code=abc123&sc
 After authentication, use the access token to fetch your kilometers:
 
 ```bash
-# Fetch kilometers since January 1st, 2024
+# Fetch cycling kilometers since January 1st, 2024 (default)
 ./target/release/chain-life fetch --date 2024-01-01 --token YOUR_ACCESS_TOKEN
+
+# Fetch running kilometers only
+./target/release/chain-life fetch --date 2024-01-01 --token YOUR_ACCESS_TOKEN --activity-types running
+
+# Fetch specific activity types
+./target/release/chain-life fetch --date 2024-01-01 --token YOUR_ACCESS_TOKEN --activity-types "Ride,VirtualRide,Run"
 
 # With verbose output
 ./target/release/chain-life fetch --date 2024-01-01 --token YOUR_ACCESS_TOKEN --verbose
@@ -85,21 +92,24 @@ After authentication, use the access token to fetch your kilometers:
 
 Example output:
 ```
-🏃 Total kilometers since 2024-01-01: 342.50 km
+🚴 Total kilometers since 2024-01-01: 342.50 km
 ```
 
 With verbose output:
 ```
 Starting Strava data fetch...
 Parsed start date: 2024-01-01
+Filtering for activity types: ["Ride", "VirtualRide", "EBikeRide", "MountainBikeRide", "GravelRide", "Handcycle"]
 Fetching activities since timestamp: 1704067200
 Fetched 25 activities from page 1
-  - Morning Run: 5.20 km (Run)
-  - Evening Bike Ride: 15.30 km (Ride)
-  - Weekend Long Run: 21.10 km (Run)
+  ✓ Morning Bike Ride: 15.30 km (Ride)
+  ✓ Evening Zwift Session: 25.40 km (VirtualRide)
+  ✗ Weekend Long Run: 21.10 km (Run) - filtered out
+  ✓ Gravel Adventure: 35.20 km (GravelRide)
   ...
-Total activities processed: 25
-🏃 Total kilometers since 2024-01-01: 342.50 km
+Total activities included: 18
+Total activities filtered out: 7
+🚴 Total kilometers since 2024-01-01: 342.50 km
 ```
 
 ## Command Reference
@@ -132,7 +142,14 @@ chain-life fetch [OPTIONS]
 **Options:**
 - `--date` / `-d`: Start date in YYYY-MM-DD format (required)
 - `--token` / `-t`: Strava access token (required)
+- `--activity-types` / `-a`: Activity types to include (default: "cycling")
 - `--verbose` / `-v`: Enable verbose output
+
+**Activity Type Options:**
+- `cycling`: All cycling activities (Ride, VirtualRide, EBikeRide, MountainBikeRide, GravelRide, Handcycle)
+- `running`: All running activities (Run, TrailRun, Treadmill, VirtualRun)
+- `all`: All activity types
+- Custom: Comma-separated list of specific types (e.g., "Ride,Run,Walk")
 
 ## Security Notes
 
@@ -181,6 +198,21 @@ cargo build --release
 This tool requests the following Strava permissions:
 - `read`: Access to read public profile information
 - `activity:read_all`: Access to read all activities (including private ones)
+
+## Activity Types
+
+The tool supports filtering by activity type to focus on specific types of exercise:
+
+**Cycling Activities (default):**
+- Ride, VirtualRide, EBikeRide, MountainBikeRide, GravelRide, Handcycle
+
+**Running Activities:**
+- Run, TrailRun, Treadmill, VirtualRun
+
+**Other Supported Types:**
+- Walk, Hike, Swim, Rowing, Kayaking, Canoeing, StandUpPaddling, Surfing, Kitesurf, Windsurf, Sail, Snowboard, Ski, BackcountrySki, NordicSki, Snowshoe, RockClimbing, IceClimbing, AlpineSki, Elliptical, StairStepper, WeightTraining, Workout, Crossfit, Yoga, Golf
+
+Use the `--activity-types` parameter to specify which activities to include in your distance calculations.
 
 ## License
 
